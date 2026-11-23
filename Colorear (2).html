@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Colorear</title>
+<link rel="icon" id="ic" href="data:,">
+<link rel="apple-touch-icon" id="ati" href="">
+<style id="st">
+:root{--bg:#fff7ec;--card:#ffffff;--ink:#3b2f4a;--line:#e6d9c6;--acc:#ff6fa5;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#241d2e;--card:#322a40;--ink:#f4ecff;--line:#4a3f5c;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#241d2e;--card:#322a40;--ink:#f4ecff;--line:#4a3f5c;color-scheme:dark}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column;overflow:hidden;overscroll-behavior:none;user-select:none;-webkit-user-select:none}
+header{display:flex;align-items:center;gap:8px;padding:8px 12px;flex-wrap:wrap}
+header h1{font-size:20px;margin:0;flex:1;min-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+button{font:inherit;color:var(--ink);background:var(--card);border:2px solid var(--line);border-radius:14px;padding:8px 12px;min-height:44px;cursor:pointer}
+button.on{border-color:var(--acc);box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 35%,transparent)}
+#gal{display:flex;gap:8px;overflow-x:auto;padding:4px 12px 8px;flex:none}
+#gal .th{flex:none;width:64px;height:52px;border:3px solid var(--line);border-radius:10px;background:#fff center/contain no-repeat;padding:0;min-height:0}
+#gal .th.on{border-color:var(--acc)}
+#wrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:4px 12px}
+#stage{position:relative;background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.18);touch-action:none;overflow:hidden}
+#stage canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#tools{display:flex;align-items:center;gap:8px;padding:8px 12px;flex-wrap:wrap}
+#size{flex:1;min-width:90px;accent-color:var(--acc)}
+#pal{display:flex;gap:8px;overflow-x:auto;padding:4px 12px 12px;flex:none}
+.sw{flex:none;width:44px;height:44px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px var(--line);padding:0;min-height:0}
+.sw.on{box-shadow:0 0 0 4px var(--ink)}
+#cust{flex:none;width:44px;height:44px;border:none;padding:0;background:none;border-radius:50%}
+#dlg,#idlg{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;padding:20px;z-index:9}
+#dlg.show,#idlg.show{display:flex}
+#dlg div,#idlg div{background:var(--card);padding:22px;border-radius:20px;max-width:360px;width:100%;text-align:center}
+#dlg input{font:inherit;font-size:22px;width:100%;padding:10px;border-radius:12px;border:2px solid var(--line);background:var(--bg);color:var(--ink);text-align:center;margin:12px 0;user-select:text;-webkit-user-select:text}
+#add,#addi,#addc{display:none}
+#ering{position:absolute;border:3px solid #000;border-radius:50%;box-shadow:0 0 0 2px #fff;pointer-events:none;display:none;transform:translate(-50%,-50%);z-index:3}
+</style>
+</head>
+<body>
+<header id="hdr">
+  <h1 id="ttl">🎨 Colorear</h1>
+  <small id="ver" style="flex-basis:100%;font-size:11px;opacity:.6;margin-top:-6px"></small>
+  <button id="bname" aria-label="Cambiar nombre">✏️ Nombre</button>
+  <button id="bicon">🖼️ Icono</button>
+  <button id="binst">📲 Instalar</button>
+  <button id="badd">➕ Dibujo</button>
+  <button id="bcloud" style="display:none">☁️ Dibujos para todos</button>
+  <button id="bdel" style="display:none" aria-label="Quitar dibujo">🗑️</button>
+</header>
+<div id="gal"></div>
+<div id="wrap"><div id="stage"><canvas id="paint"></canvas><canvas id="lines"></canvas><div id="ering"></div></div></div>
+<div id="tools">
+  <button id="tb" class="on">🖌️ Pintar</button>
+  <button id="te">🧽 Goma</button>
+  <input id="size" type="range" min="6" max="90" value="26" aria-label="Grosor">
+  <button id="bun">↩️</button>
+  <button id="bcl">🗑️ Borrar todo</button>
+</div>
+<div id="pal"></div>
+<input id="add" type="file" accept="image/*">
+<input id="addi" type="file" accept="image/*">
+<input id="addc" type="file" accept="image/*" multiple>
+<div id="idlg"><div>
+  <h2 style="margin:0 0 8px">Instalar la app</h2>
+  <p style="text-align:left;margin:8px 0"><b>iPhone / iPad (Safari):</b> pulsa Compartir y elige «Añadir a pantalla de inicio».</p>
+  <p style="text-align:left;margin:8px 0"><b>Android (Chrome):</b> pulsa el menú ⋮ y elige «Instalar app» o «Añadir a pantalla de inicio».</p>
+  <button id="iok" class="on">Entendido</button>
+</div></div>
+<div id="dlg"><div>
+  <h2 style="margin:0">¿Cómo te llamas?</h2>
+  <input id="nin" maxlength="14" placeholder="Nombre" autocomplete="off">
+  <button id="nok" class="on">Guardar</button>
+</div></div>
+<script type="application/json" id="shared">[]</script>
+<script id="app">
+const $=id=>document.getElementById(id);
+const stage=$('stage'),paint=$('paint'),lines=$('lines');
+const pc=paint.getContext('2d',{willReadFrequently:true}),lc=lines.getContext('2d',{willReadFrequently:true});
+let W=1000,H=800,color='#e53935',tool='brush',undoS=[],gal=[],cur=0,down=null,last=null;
+function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
+
+/* ---------- Nombre e icono ---------- */
+function applyIcon(u){
+  $('ati').href=u;$('ic').href=u;
+  const im=new Image();im.onload=()=>{const c=document.createElement('canvas');c.width=c.height=512;c.getContext('2d').drawImage(im,0,0,512,512);
+    const t=document.title||'Colorear',m={name:t,short_name:t.slice(0,12),start_url:location.href.split('#')[0],display:'standalone',background_color:'#fff7ec',theme_color:'#ff6fa5',icons:[{src:c.toDataURL('image/png'),sizes:'512x512',type:'image/png'}]};
+    let l=$('mf');if(!l){l=document.createElement('link');l.rel='manifest';l.id='mf';document.head.appendChild(l)}
+    l.href=URL.createObjectURL(new Blob([JSON.stringify(m)],{type:'application/manifest+json'}))};
+  im.src=u}
+function makeIcon(name){
+  const ci=ls('col_icon');if(ci){applyIcon(ci);return}
+  const c=document.createElement('canvas');c.width=c.height=180;const x=c.getContext('2d');
+  const g=x.createLinearGradient(0,0,180,180);g.addColorStop(0,'#ff8fb8');g.addColorStop(1,'#8e6bff');
+  x.fillStyle=g;x.fillRect(0,0,180,180);
+  ['#ffd93b','#4dd0e1','#7be495','#ff7043'].forEach((cl,i)=>{x.fillStyle=cl;x.beginPath();x.arc(30+i*40,28,13,0,7);x.fill()});
+  const t=(name||'Colorear').trim();let fs=70;x.textAlign='center';x.textBaseline='middle';
+  do{x.font='800 '+fs+'px system-ui,sans-serif';fs-=2}while(x.measureText(t).width>156&&fs>14);
+  x.fillStyle='rgba(0,0,0,.25)';x.fillText(t,92,112);x.fillStyle='#fff';x.fillText(t,90,110);
+  applyIcon(c.toDataURL('image/png'));
+}
+function setName(n){
+  document.title=n?n:'Colorear';$('ttl').textContent='🎨 '+(n?'Colorea, '+n:'Colorear');makeIcon(n);
+}
+function askName(){$('nin').value=ls('col_name')||'';$('dlg').classList.add('show');setTimeout(()=>$('nin').focus(),50)}
+$('nok').onclick=()=>{const n=$('nin').value.trim();if(n){ls('col_name',n);setName(n);$('dlg').classList.remove('show')}};
+$('nin').addEventListener('keydown',e=>{if(e.key==='Enter')$('nok').click()});
+$('bname').onclick=askName;
+
+/* ---------- Dibujos ---------- */
+function process(src,maxS){
+  const w0=src.naturalWidth||src.width,h0=src.naturalHeight||src.height,k=Math.min(1,maxS/Math.max(w0,h0));
+  const w=Math.round(w0*k),h=Math.round(h0*k),t=document.createElement('canvas');t.width=w;t.height=h;
+  const x=t.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,w,h);x.drawImage(src,0,0,w,h);
+  const id=x.getImageData(0,0,w,h),d=id.data;
+  for(let i=0;i<d.length;i+=4){const l=.3*d[i]+.59*d[i+1]+.11*d[i+2];
+    d[i+3]=l<100?255:l>200?0:Math.round((200-l)/100*255);d[i]=d[i+1]=d[i+2]=0}
+  x.putImageData(id,0,0);return t.toDataURL('image/png');
+}
+function mk(fn){const c=document.createElement('canvas');c.width=1000;c.height=800;const x=c.getContext('2d');
+  x.fillStyle='#fff';x.fillRect(0,0,1000,800);x.strokeStyle='#000';x.lineWidth=8;x.lineJoin='round';x.lineCap='round';fn(x);return process(c,1000)}
+const built=[
+ mk(x=>{for(let k=0;k<8;k++){const a=k*Math.PI/4;x.beginPath();x.ellipse(500+Math.cos(a)*150,330+Math.sin(a)*150,85,50,a,0,7);x.stroke()}
+   x.beginPath();x.arc(500,330,70,0,7);x.stroke();x.strokeRect(485,400,30,360);
+   x.beginPath();x.ellipse(410,610,75,30,-.5,0,7);x.stroke();x.beginPath();x.ellipse(590,540,75,30,.5,0,7);x.stroke()}),
+ mk(x=>{x.strokeRect(250,350,500,350);x.beginPath();x.moveTo(220,350);x.lineTo(500,150);x.lineTo(780,350);x.closePath();x.stroke();
+   x.strokeRect(450,520,100,180);x.strokeRect(300,420,100,100);x.strokeRect(600,420,100,100);
+   x.beginPath();x.arc(870,110,60,0,7);x.stroke();x.beginPath();x.moveTo(60,700);x.lineTo(940,700);x.stroke()}),
+ mk(x=>{x.beginPath();x.ellipse(450,400,260,150,0,0,7);x.stroke();x.beginPath();x.moveTo(690,400);x.lineTo(900,270);x.lineTo(900,530);x.closePath();x.stroke();
+   x.beginPath();x.arc(330,360,22,0,7);x.stroke();x.beginPath();x.moveTo(430,260);x.lineTo(480,160);x.lineTo(560,270);x.stroke();
+   x.beginPath();x.arc(150,200,30,0,7);x.stroke();x.beginPath();x.arc(210,120,20,0,7);x.stroke()})
+];
+function loadGal(){let u=[];try{u=JSON.parse(ls('col_imgs')||'[]')}catch(e){}
+  gal=built.map(s=>({s,u:false})).concat(shared.map(s=>({s,u:'s'})),u.map(s=>({s,u:'l'})))}
+function saveUser(){ls('col_imgs',JSON.stringify(gal.filter(g=>g.u==='l').map(g=>g.s)))}
+function renderGal(){const g=$('gal');g.innerHTML='';
+  gal.forEach((it,i)=>{const b=document.createElement('button');b.className='th'+(i===cur?' on':'');b.style.backgroundImage='url('+it.s+')';
+    b.onclick=()=>select(i);g.appendChild(b)});
+  $('bdel').style.display=canDel()?'':'none'}
+function select(i){cur=i;const im=new Image();im.onload=()=>{
+  W=im.naturalWidth;H=im.naturalHeight;paint.width=lines.width=W;paint.height=lines.height=H;
+  lc.clearRect(0,0,W,H);lc.drawImage(im,0,0);pc.clearRect(0,0,W,H);undoS=[];fit();renderGal()};im.src=gal[i].s}
+function fit(){const w=$('wrap'),aw=w.clientWidth-24,ah=w.clientHeight-8,k=Math.min(aw/W,ah/H);
+  stage.style.width=Math.floor(W*k)+'px';stage.style.height=Math.floor(H*k)+'px'}
+addEventListener('resize',fit);
+$('badd').onclick=()=>$('add').click();
+$('add').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{const im=new Image();im.onload=()=>{gal.push({s:process(im,1000),u:'l'});saveUser();select(gal.length-1)};im.src=r.result};
+  r.readAsDataURL(f);e.target.value=''};
+$('bdel').onclick=()=>{const g=gal[cur];if(!g||!canDel())return;
+  if(g.u==='s'){shared=shared.filter(x=>x!==g.s);pubShared()}else{gal.splice(cur,1);saveUser();select(0)}};
+
+/* ---------- Colores y herramientas ---------- */
+const COLORS=['#e53935','#ff7043','#ff9800','#ffc107','#ffeb3b','#cddc39','#8bc34a','#4caf50','#009688','#26c6da','#03a9f4','#1e88e5','#3949ab','#7e57c2','#ab47bc','#ec407a','#ff8fb8','#f8bbd0','#ffccbc','#d7a77a','#8d6e63','#5d4037','#9e9e9e','#212121','#ffffff'];
+COLORS.forEach((c,i)=>{const b=document.createElement('button');b.className='sw';b.style.background=c;b.setAttribute('aria-label','Color '+(i+1));
+  b.onclick=()=>pick(c,b);$('pal').appendChild(b)});
+const cu=document.createElement('input');cu.type='color';cu.id='cust';cu.value='#ff0000';cu.oninput=()=>pick(cu.value,null);$('pal').appendChild(cu);
+function pick(c,b){color=c;document.querySelectorAll('.sw').forEach(x=>x.classList.remove('on'));if(b)b.classList.add('on');setTool('brush')}
+function setTool(t){tool=t;setTimeout(()=>ring(),0);$('tb').classList.toggle('on',t==='brush');$('te').classList.toggle('on',t==='eraser')}
+$('tb').onclick=()=>setTool('brush');$('te').onclick=()=>setTool('eraser');
+function snap(){undoS.push(pc.getImageData(0,0,W,H));if(undoS.length>12)undoS.shift()}
+$('bun').onclick=()=>{const s=undoS.pop();if(s)pc.putImageData(s,0,0)};
+$('bcl').onclick=()=>{snap();pc.clearRect(0,0,W,H)};
+
+/* ---------- Pintar ---------- */
+function rgb(h){return[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]}
+function fill(p){
+  const x=Math.floor(p.x),y=Math.floor(p.y);if(x<0||y<0||x>=W||y>=H)return;
+  const ld=lc.getImageData(0,0,W,H).data;if(ld[(y*W+x)*4+3]>110)return;
+  snap();const id=pc.getImageData(0,0,W,H),d=id.data,vis=new Uint8Array(W*H),st=new Int32Array(W*H+8);
+  const er=tool==='eraser',[r,g,b]=rgb(color);let sp=0;st[sp++]=y*W+x;vis[y*W+x]=1;
+  while(sp){const i=st[--sp],cx=i%W,cy=(i-cx)/W,o=i*4;
+    if(er){d[o+3]=0}else{d[o]=r;d[o+1]=g;d[o+2]=b;d[o+3]=255}
+    const n=[cx>0?i-1:-1,cx<W-1?i+1:-1,cy>0?i-W:-1,cy<H-1?i+W:-1];
+    for(let k=0;k<4;k++){const j=n[k];if(j<0||vis[j])continue;vis[j]=1;if(ld[j*4+3]>110)continue;st[sp++]=j}}
+  pc.putImageData(id,0,0);
+}
+function pt(e){const r=stage.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height}}
+function style(){const er=tool==='eraser';pc.globalCompositeOperation=er?'destination-out':'source-over';
+  pc.strokeStyle=pc.fillStyle=color;pc.lineWidth=+$('size').value*(W/1000);pc.lineCap=pc.lineJoin='round'}
+function dot(p){style();pc.beginPath();pc.arc(p.x,p.y,pc.lineWidth/2,0,7);pc.fill()}
+function seg(a,b){style();pc.beginPath();pc.moveTo(a.x,a.y);pc.lineTo(b.x,b.y);pc.stroke()}
+stage.addEventListener('pointerdown',e=>{e.preventDefault();try{stage.setPointerCapture(e.pointerId)}catch(_){}
+  down={p:pt(e),moved:false,id:e.pointerId}});
+stage.addEventListener('pointermove',e=>{if(!down||e.pointerId!==down.id)return;e.preventDefault();const p=pt(e);
+  if(!down.moved){const r=stage.getBoundingClientRect(),th=10*W/r.width;
+    if(Math.hypot(p.x-down.p.x,p.y-down.p.y)<th)return;down.moved=true;snap();dot(down.p);last=down.p}
+  seg(last,p);last=p});
+const end=e=>{if(!down)return;if(!down.moved&&e.type==='pointerup')fill(down.p);down=null};
+stage.addEventListener('pointerup',end);stage.addEventListener('pointercancel',end);
+document.addEventListener('gesturestart',e=>e.preventDefault());
+
+/* ---------- Círculo de la goma, icono propio e instalación ---------- */
+const ering=$('ering');let rp=null;
+function ring(e){
+  const r=stage.getBoundingClientRect();
+  if(e&&e.clientX!==undefined)rp={x:e.clientX-r.left,y:e.clientY-r.top};
+  if(tool!=='eraser'||!rp){ering.style.display='none';return}
+  const d=+$('size').value*r.width/1000;
+  ering.style.width=ering.style.height=d+'px';ering.style.left=rp.x+'px';ering.style.top=rp.y+'px';ering.style.display='block'}
+stage.addEventListener('pointerdown',ring);stage.addEventListener('pointermove',ring);
+$('size').addEventListener('input',()=>ring());
+$('bicon').onclick=()=>$('addi').click();
+$('addi').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{const im=new Image();im.onload=()=>{const s=Math.min(im.naturalWidth,im.naturalHeight),c=document.createElement('canvas');c.width=c.height=512;
+    const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,512,512);
+    x.drawImage(im,(im.naturalWidth-s)/2,(im.naturalHeight-s)/2,s,s,0,0,512,512);
+    const u=c.toDataURL('image/png');ls('col_icon',u);applyIcon(u);
+    $('bicon').textContent='✅ Icono listo';setTimeout(()=>$('bicon').textContent='🖼️ Icono',2500)};im.src=r.result};
+  r.readAsDataURL(f);e.target.value=''};
+let dip=null;addEventListener('beforeinstallprompt',e=>{e.preventDefault();dip=e});
+$('binst').onclick=()=>{if(dip){dip.prompt();dip=null}else $('idlg').classList.add('show')};
+$('iok').onclick=()=>$('idlg').classList.remove('show');
+
+/* ---------- Dibujos para todos: se guardan dentro de la propia app ---------- */
+let shared=[],art=null,own=false;
+try{shared=JSON.parse($('shared').textContent||'[]')}catch(e){}
+function canDel(){const g=gal[cur];return !!g&&(g.u==='l'||(g.u==='s'&&own))}
+function buildHtml(list){
+  const H='meta[charset],meta[name=viewport],meta[name^=apple],meta[name=mobile-web-app-capable],title,#st,#ic,#ati',
+    B='#hdr,#gal,#wrap,#tools,#pal,#add,#addi,#addc,#dlg,#idlg,#shared,#app',
+    h=document.createElement('div'),b=document.createElement('div');
+  [...document.head.children].filter(n=>n.matches(H)).forEach(n=>h.appendChild(n.cloneNode(true)));
+  [...document.body.children].filter(n=>n.matches(B)).forEach(n=>b.appendChild(n.cloneNode(true)));
+  const q=(r,s)=>r.querySelector(s);
+  q(h,'title').textContent='Colorear';q(h,'#ic').setAttribute('href','data:,');q(h,'#ati').setAttribute('href','');
+  ['#gal','#pal'].forEach(s=>q(b,s).innerHTML='');
+  ['#dlg','#idlg'].forEach(s=>q(b,s).removeAttribute('class'));
+  const st=q(b,'#stage');st.removeAttribute('style');st.querySelectorAll('canvas').forEach(c=>{c.removeAttribute('width');c.removeAttribute('height')});
+  q(b,'#ering').removeAttribute('style');q(b,'#ttl').textContent='🎨 Colorear';q(b,'#ver').textContent='';q(b,'#bicon').textContent='🖼️ Icono';
+  q(b,'#bdel').setAttribute('style','display:none');q(b,'#bcloud').setAttribute('style','display:none');q(b,'#bcloud').textContent='☁️ Dibujos para todos';
+  q(b,'#badd').removeAttribute('style');q(b,'#tb').className='on';q(b,'#te').removeAttribute('class');
+  q(b,'#shared').textContent=JSON.stringify(list);
+  return '<!DOCTYPE html>\n<html lang="es">\n<head>\n'+h.innerHTML+'\n</head>\n<body>\n'+b.innerHTML+'\n</body>\n</html>'}
+async function pubShared(){
+  const b=$('bcloud'),t='☁️ Dibujos para todos';
+  try{const html=buildHtml(shared);if(html.length>15e6)throw new Error('big');b.textContent='⏳ Publicando…';await art.publish(html)}
+  catch(e){b.textContent=e&&e.message==='big'?'Demasiados dibujos':'No se pudo publicar';setTimeout(()=>b.textContent=t,3500)}}
+$('bcloud').onclick=()=>$('addc').click();
+$('addc').onchange=async e=>{const fs=[...e.target.files];e.target.value='';if(!fs.length)return;
+  const add=[];for(const f of fs){add.push(await new Promise(r=>{const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>r(process(im,1000));im.onerror=()=>r(null);im.src=fr.result};fr.readAsDataURL(f)}))}
+  shared=shared.concat(add.filter(Boolean));pubShared()};
+(async()=>{const v=$('ver');v.textContent='v3 · comprobando…';
+  try{if(!window.claude){v.textContent='v3 · sin conexión con claude.ai';return}
+    const u=await window.claude.use('user');const o=!!(u&&await u.isOwner()),ed=!!(u&&await u.canEdit());
+    art=await window.claude.use('artifact');own=!!art&&(o||ed);
+    v.textContent='v3 · '+(u?'usuario sí':'usuario no')+' · '+(art?'publicar sí':'publicar no')+' · '+(o?'dueño':ed?'editor':'solo ver');
+    if(own){$('bcloud').style.display='';$('badd').style.display='none'}renderGal()}
+  catch(e){v.textContent='v3 · error '+((e&&e.message)||'')}})();
+
+/* ---------- Inicio ---------- */
+loadGal();pick(COLORS[0],document.querySelector('.sw'));select(0);
+const nm=ls('col_name');if(nm){setName(nm)}else{makeIcon('');askName()}
+</script>
+</body>
+</html>
