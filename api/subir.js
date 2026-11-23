@@ -1,10 +1,12 @@
 import { put } from '@vercel/blob';
+import { PASSWORD } from './_config.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
-  if (!process.env.ADMIN_PASSWORD || req.headers['x-pw'] !== process.env.ADMIN_PASSWORD) {
-    return res.status(401).json({ error: 'contraseña' });
-  }
+  const want = String(PASSWORD || process.env.ADMIN_PASSWORD || '').trim();
+  if (!want) return res.status(503).json({ error: 'sin_config' });
+  const got = String((req.body && req.body.pw) || '').trim();
+  if (got !== want) return res.status(401).json({ error: 'contraseña' });
   try {
     const data = (req.body && req.body.data) || '';
     if (!data.startsWith('data:image/png;base64,')) return res.status(400).json({ error: 'formato' });

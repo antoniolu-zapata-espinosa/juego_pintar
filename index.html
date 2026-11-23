@@ -217,9 +217,10 @@ $('iok').onclick=()=>$('idlg').classList.remove('show');
 let shared=[],own=false,pw=ls('col_pw')||'';
 function canDel(){const g=gal[cur];return !!g&&(g.u==='l'||(g.u==='s'&&own))}
 function setMsg(t){const b=$('bcloud');b.textContent=t;setTimeout(()=>b.textContent='☁️ Dibujos para todos',3500)}
-function getPw(){if(!pw){pw=prompt('Contraseña de administrador')||'';if(pw)ls('col_pw',pw)}return pw}
+function getPw(){if(!pw){pw=(prompt('Contraseña de administrador')||'').trim();if(pw)ls('col_pw',pw)}return pw}
 async function post(path,obj){
-  const r=await fetch(path,{method:'POST',headers:{'content-type':'application/json','x-pw':pw},body:JSON.stringify(obj)});
+  const r=await fetch(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({...obj,pw})});
+  if(r.status===503){setMsg('Falta ADMIN_PASSWORD en Vercel');throw new Error('cfg')}
   if(r.status===401){pw='';ls('col_pw','');setMsg('Contraseña incorrecta');throw new Error('pw')}
   if(!r.ok)throw new Error('http '+r.status);return r.json()}
 async function loadShared(last){
@@ -233,7 +234,7 @@ $('addc').onchange=async e=>{const fs=[...e.target.files];e.target.value='';if(!
       const d=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>r(process(im,1000));im.onerror=()=>r(null);im.src=fr.result};fr.readAsDataURL(f)});
       if(!d)continue;$('bcloud').textContent='⏳ Subiendo '+(++n)+'/'+fs.length+'…';await post('/api/subir',{data:d})}
     await loadShared(true);setMsg('✅ Listo')}
-  catch(err){if(err.message!=='pw')setMsg('No se pudo subir')}};
+  catch(err){if(err.message!=='pw'&&err.message!=='cfg')setMsg('No se pudo subir')}};
 if(location.hash==='#admin'){own=true;$('bcloud').style.display='';$('badd').style.display='none'}
 loadShared();
 
