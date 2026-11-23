@@ -43,7 +43,6 @@ button.on{border-color:var(--acc);box-shadow:0 0 0 3px color-mix(in srgb,var(--a
 <body>
 <header id="hdr">
   <h1 id="ttl">🎨 Colorear</h1>
-  <small id="ver" style="flex-basis:100%;font-size:11px;opacity:.6;margin-top:-6px"></small>
   <button id="bname" aria-label="Cambiar nombre">✏️ Nombre</button>
   <button id="bicon">🖼️ Icono</button>
   <button id="binst">📲 Instalar</button>
@@ -75,8 +74,7 @@ button.on{border-color:var(--acc);box-shadow:0 0 0 3px color-mix(in srgb,var(--a
   <input id="nin" maxlength="14" placeholder="Nombre" autocomplete="off">
   <button id="nok" class="on">Guardar</button>
 </div></div>
-<script type="application/json" id="shared">[]</script>
-<script id="app">
+<script>
 const $=id=>document.getElementById(id);
 const stage=$('stage'),paint=$('paint'),lines=$('lines');
 const pc=paint.getContext('2d',{willReadFrequently:true}),lc=lines.getContext('2d',{willReadFrequently:true});
@@ -140,7 +138,7 @@ function renderGal(){const g=$('gal');g.innerHTML='';
   gal.forEach((it,i)=>{const b=document.createElement('button');b.className='th'+(i===cur?' on':'');b.style.backgroundImage='url('+it.s+')';
     b.onclick=()=>select(i);g.appendChild(b)});
   $('bdel').style.display=canDel()?'':'none'}
-function select(i){cur=i;const im=new Image();im.onload=()=>{
+function select(i){cur=i;const im=new Image();if(gal[i].u==='s')im.crossOrigin='anonymous';im.onload=()=>{
   W=im.naturalWidth;H=im.naturalHeight;paint.width=lines.width=W;paint.height=lines.height=H;
   lc.clearRect(0,0,W,H);lc.drawImage(im,0,0);pc.clearRect(0,0,W,H);undoS=[];fit();renderGal()};im.src=gal[i].s}
 function fit(){const w=$('wrap'),aw=w.clientWidth-24,ah=w.clientHeight-8,k=Math.min(aw/W,ah/H);
@@ -151,7 +149,7 @@ $('add').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileRea
   r.onload=()=>{const im=new Image();im.onload=()=>{gal.push({s:process(im,1000),u:'l'});saveUser();select(gal.length-1)};im.src=r.result};
   r.readAsDataURL(f);e.target.value=''};
 $('bdel').onclick=()=>{const g=gal[cur];if(!g||!canDel())return;
-  if(g.u==='s'){shared=shared.filter(x=>x!==g.s);pubShared()}else{gal.splice(cur,1);saveUser();select(0)}};
+  if(g.u==='s'){post('/api/borrar',{url:g.s}).then(()=>{select(0);return loadShared()}).catch(()=>setMsg('No se pudo borrar'))}else{gal.splice(cur,1);saveUser();select(0)}};
 
 /* ---------- Colores y herramientas ---------- */
 const COLORS=['#e53935','#ff7043','#ff9800','#ffc107','#ffeb3b','#cddc39','#8bc34a','#4caf50','#009688','#26c6da','#03a9f4','#1e88e5','#3949ab','#7e57c2','#ab47bc','#ec407a','#ff8fb8','#f8bbd0','#ffccbc','#d7a77a','#8d6e63','#5d4037','#9e9e9e','#212121','#ffffff'];
@@ -215,41 +213,29 @@ let dip=null;addEventListener('beforeinstallprompt',e=>{e.preventDefault();dip=e
 $('binst').onclick=()=>{if(dip){dip.prompt();dip=null}else $('idlg').classList.add('show')};
 $('iok').onclick=()=>$('idlg').classList.remove('show');
 
-/* ---------- Dibujos para todos: se guardan dentro de la propia app ---------- */
-let shared=[],art=null,own=false;
-try{shared=JSON.parse($('shared').textContent||'[]')}catch(e){}
+/* ---------- Dibujos para todos (Vercel Blob) ---------- */
+let shared=[],own=false,pw=ls('col_pw')||'';
 function canDel(){const g=gal[cur];return !!g&&(g.u==='l'||(g.u==='s'&&own))}
-function buildHtml(list){
-  const H='meta[charset],meta[name=viewport],meta[name^=apple],meta[name=mobile-web-app-capable],title,#st,#ic,#ati',
-    B='#hdr,#gal,#wrap,#tools,#pal,#add,#addi,#addc,#dlg,#idlg,#shared,#app',
-    h=document.createElement('div'),b=document.createElement('div');
-  [...document.head.children].filter(n=>n.matches(H)).forEach(n=>h.appendChild(n.cloneNode(true)));
-  [...document.body.children].filter(n=>n.matches(B)).forEach(n=>b.appendChild(n.cloneNode(true)));
-  const q=(r,s)=>r.querySelector(s);
-  q(h,'title').textContent='Colorear';q(h,'#ic').setAttribute('href','data:,');q(h,'#ati').setAttribute('href','');
-  ['#gal','#pal'].forEach(s=>q(b,s).innerHTML='');
-  ['#dlg','#idlg'].forEach(s=>q(b,s).removeAttribute('class'));
-  const st=q(b,'#stage');st.removeAttribute('style');st.querySelectorAll('canvas').forEach(c=>{c.removeAttribute('width');c.removeAttribute('height')});
-  q(b,'#ering').removeAttribute('style');q(b,'#ttl').textContent='🎨 Colorear';q(b,'#ver').textContent='';q(b,'#bicon').textContent='🖼️ Icono';
-  q(b,'#bdel').setAttribute('style','display:none');q(b,'#bcloud').setAttribute('style','display:none');q(b,'#bcloud').textContent='☁️ Dibujos para todos';
-  q(b,'#badd').removeAttribute('style');q(b,'#tb').className='on';q(b,'#te').removeAttribute('class');
-  q(b,'#shared').textContent=JSON.stringify(list);
-  return '<!DOCTYPE html>\n<html lang="es">\n<head>\n'+h.innerHTML+'\n</head>\n<body>\n'+b.innerHTML+'\n</body>\n</html>'}
-async function pubShared(){
-  const b=$('bcloud'),t='☁️ Dibujos para todos';
-  try{const html=buildHtml(shared);if(html.length>15e6)throw new Error('big');b.textContent='⏳ Publicando…';await art.publish(html)}
-  catch(e){b.textContent=e&&e.message==='big'?'Demasiados dibujos':'No se pudo publicar';setTimeout(()=>b.textContent=t,3500)}}
-$('bcloud').onclick=()=>$('addc').click();
+function setMsg(t){const b=$('bcloud');b.textContent=t;setTimeout(()=>b.textContent='☁️ Dibujos para todos',3500)}
+function getPw(){if(!pw){pw=prompt('Contraseña de administrador')||'';if(pw)ls('col_pw',pw)}return pw}
+async function post(path,obj){
+  const r=await fetch(path,{method:'POST',headers:{'content-type':'application/json','x-pw':pw},body:JSON.stringify(obj)});
+  if(r.status===401){pw='';ls('col_pw','');setMsg('Contraseña incorrecta');throw new Error('pw')}
+  if(!r.ok)throw new Error('http '+r.status);return r.json()}
+async function loadShared(last){
+  try{const r=await fetch('/api/dibujos',{cache:'no-store'});if(!r.ok)return;const l=await r.json();
+    shared=l.map(x=>x.url);const loc=gal.filter(g=>g.u==='l');
+    gal=built.map(s=>({s,u:false})).concat(shared.map(s=>({s,u:'s'})),loc);
+    if(last&&shared.length)select(built.length+shared.length-1);else{cur=Math.min(cur,gal.length-1);renderGal()}}catch(e){}}
+$('bcloud').onclick=()=>{if(getPw())$('addc').click()};
 $('addc').onchange=async e=>{const fs=[...e.target.files];e.target.value='';if(!fs.length)return;
-  const add=[];for(const f of fs){add.push(await new Promise(r=>{const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>r(process(im,1000));im.onerror=()=>r(null);im.src=fr.result};fr.readAsDataURL(f)}))}
-  shared=shared.concat(add.filter(Boolean));pubShared()};
-(async()=>{const v=$('ver');v.textContent='v3 · comprobando…';
-  try{if(!window.claude){v.textContent='v3 · sin conexión con claude.ai';return}
-    const u=await window.claude.use('user');const o=!!(u&&await u.isOwner()),ed=!!(u&&await u.canEdit());
-    art=await window.claude.use('artifact');own=!!art&&(o||ed);
-    v.textContent='v3 · '+(u?'usuario sí':'usuario no')+' · '+(art?'publicar sí':'publicar no')+' · '+(o?'dueño':ed?'editor':'solo ver');
-    if(own){$('bcloud').style.display='';$('badd').style.display='none'}renderGal()}
-  catch(e){v.textContent='v3 · error '+((e&&e.message)||'')}})();
+  try{let n=0;for(const f of fs){
+      const d=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>r(process(im,1000));im.onerror=()=>r(null);im.src=fr.result};fr.readAsDataURL(f)});
+      if(!d)continue;$('bcloud').textContent='⏳ Subiendo '+(++n)+'/'+fs.length+'…';await post('/api/subir',{data:d})}
+    await loadShared(true);setMsg('✅ Listo')}
+  catch(err){if(err.message!=='pw')setMsg('No se pudo subir')}};
+if(location.hash==='#admin'){own=true;$('bcloud').style.display='';$('badd').style.display='none'}
+loadShared();
 
 /* ---------- Inicio ---------- */
 loadGal();pick(COLORS[0],document.querySelector('.sw'));select(0);
