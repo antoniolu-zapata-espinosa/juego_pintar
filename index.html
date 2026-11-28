@@ -7,8 +7,11 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Colorear</title>
-<link rel="icon" id="ic" href="data:,">
-<link rel="apple-touch-icon" id="ati" href="">
+<meta name="theme-color" content="#ff6fa5">
+<meta name="apple-mobile-web-app-title" content="Colorear">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/png" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <style id="st">
 :root{--bg:#fff7ec;--card:#ffffff;--ink:#3b2f4a;--line:#e6d9c6;--acc:#ff6fa5;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#241d2e;--card:#322a40;--ink:#f4ecff;--line:#4a3f5c;color-scheme:dark}}
@@ -36,7 +39,7 @@ button.on{border-color:var(--acc);box-shadow:0 0 0 3px color-mix(in srgb,var(--a
 #dlg.show,#idlg.show{display:flex}
 #dlg div,#idlg div{background:var(--card);padding:22px;border-radius:20px;max-width:360px;width:100%;text-align:center}
 #dlg input{font:inherit;font-size:22px;width:100%;padding:10px;border-radius:12px;border:2px solid var(--line);background:var(--bg);color:var(--ink);text-align:center;margin:12px 0;user-select:text;-webkit-user-select:text}
-#add,#addi,#addc{display:none}
+#add,#addc{display:none}
 #ering{position:absolute;border:3px solid #000;border-radius:50%;box-shadow:0 0 0 2px #fff;pointer-events:none;display:none;transform:translate(-50%,-50%);z-index:3}
 </style>
 </head>
@@ -44,7 +47,6 @@ button.on{border-color:var(--acc);box-shadow:0 0 0 3px color-mix(in srgb,var(--a
 <header id="hdr">
   <h1 id="ttl">🎨 Colorear</h1>
   <button id="bname" aria-label="Cambiar nombre">✏️ Nombre</button>
-  <button id="bicon">🖼️ Icono</button>
   <button id="binst">📲 Instalar</button>
   <button id="badd">➕ Dibujo</button>
   <button id="bcloud" style="display:none">☁️ Dibujos para todos</button>
@@ -61,7 +63,6 @@ button.on{border-color:var(--acc);box-shadow:0 0 0 3px color-mix(in srgb,var(--a
 </div>
 <div id="pal"></div>
 <input id="add" type="file" accept="image/*">
-<input id="addi" type="file" accept="image/*">
 <input id="addc" type="file" accept="image/*" multiple>
 <div id="idlg"><div>
   <h2 style="margin:0 0 8px">Instalar la app</h2>
@@ -82,24 +83,7 @@ let W=1000,H=800,color='#e53935',tool='brush',undoS=[],gal=[],cur=0,down=null,la
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
 
 /* ---------- Nombre e icono ---------- */
-function applyIcon(u){
-  $('ati').href=u;$('ic').href=u;
-  const im=new Image();im.onload=()=>{const c=document.createElement('canvas');c.width=c.height=512;c.getContext('2d').drawImage(im,0,0,512,512);
-    const t=document.title||'Colorear',m={name:t,short_name:t.slice(0,12),start_url:location.href.split('#')[0],display:'standalone',background_color:'#fff7ec',theme_color:'#ff6fa5',icons:[{src:c.toDataURL('image/png'),sizes:'512x512',type:'image/png'}]};
-    let l=$('mf');if(!l){l=document.createElement('link');l.rel='manifest';l.id='mf';document.head.appendChild(l)}
-    l.href=URL.createObjectURL(new Blob([JSON.stringify(m)],{type:'application/manifest+json'}))};
-  im.src=u}
-function makeIcon(name){
-  const ci=ls('col_icon');if(ci){applyIcon(ci);return}
-  const c=document.createElement('canvas');c.width=c.height=180;const x=c.getContext('2d');
-  const g=x.createLinearGradient(0,0,180,180);g.addColorStop(0,'#ff8fb8');g.addColorStop(1,'#8e6bff');
-  x.fillStyle=g;x.fillRect(0,0,180,180);
-  ['#ffd93b','#4dd0e1','#7be495','#ff7043'].forEach((cl,i)=>{x.fillStyle=cl;x.beginPath();x.arc(30+i*40,28,13,0,7);x.fill()});
-  const t=(name||'Colorear').trim();let fs=70;x.textAlign='center';x.textBaseline='middle';
-  do{x.font='800 '+fs+'px system-ui,sans-serif';fs-=2}while(x.measureText(t).width>156&&fs>14);
-  x.fillStyle='rgba(0,0,0,.25)';x.fillText(t,92,112);x.fillStyle='#fff';x.fillText(t,90,110);
-  applyIcon(c.toDataURL('image/png'));
-}
+function makeIcon(){}
 function setName(n){
   document.title=n?n:'Colorear';$('ttl').textContent='🎨 '+(n?'Colorea, '+n:'Colorear');makeIcon(n);
 }
@@ -201,17 +185,10 @@ function ring(e){
   ering.style.width=ering.style.height=d+'px';ering.style.left=rp.x+'px';ering.style.top=rp.y+'px';ering.style.display='block'}
 stage.addEventListener('pointerdown',ring);stage.addEventListener('pointermove',ring);
 $('size').addEventListener('input',()=>ring());
-$('bicon').onclick=()=>$('addi').click();
-$('addi').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
-  r.onload=()=>{const im=new Image();im.onload=()=>{const s=Math.min(im.naturalWidth,im.naturalHeight),c=document.createElement('canvas');c.width=c.height=512;
-    const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,512,512);
-    x.drawImage(im,(im.naturalWidth-s)/2,(im.naturalHeight-s)/2,s,s,0,0,512,512);
-    const u=c.toDataURL('image/png');ls('col_icon',u);applyIcon(u);
-    $('bicon').textContent='✅ Icono listo';setTimeout(()=>$('bicon').textContent='🖼️ Icono',2500)};im.src=r.result};
-  r.readAsDataURL(f);e.target.value=''};
 let dip=null;addEventListener('beforeinstallprompt',e=>{e.preventDefault();dip=e});
 $('binst').onclick=()=>{if(dip){dip.prompt();dip=null}else $('idlg').classList.add('show')};
 $('iok').onclick=()=>$('idlg').classList.remove('show');
+if(matchMedia('(display-mode: standalone)').matches||navigator.standalone)$('binst').style.display='none';
 
 /* ---------- Dibujos para todos (Vercel Blob) ---------- */
 let shared=[],own=false,pw=ls('col_pw')||'';
@@ -241,6 +218,7 @@ loadShared();
 /* ---------- Inicio ---------- */
 loadGal();pick(COLORS[0],document.querySelector('.sw'));select(0);
 const nm=ls('col_name');if(nm){setName(nm)}else{makeIcon('');askName()}
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
 </script>
 </body>
 </html>
